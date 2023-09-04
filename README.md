@@ -27,7 +27,7 @@
   ![](./documentation/gcloud_03.webp)  
 - Click `NEXT`
 - Optionally change the branch that should trigger a build. By default it uses your main branch.
-- Select in `Build Type`the second options `Go, Node, ... Google Cloud's buildpacks`
+- In `Build Type` select `Go, Node, ... Google Cloud's buildpacks`
 - Enter the directory where the server is located. In this case `/express`  
   ![](./documentation/gcloud_04.webp)
 - Click `SAVE`
