@@ -8,7 +8,9 @@ const cert = fs.readFileSync("./cert.pem");
 const app = express();
 
 const cors = require('cors')
-app.use(cors())
+app.use(cors({
+  origin: '*'
+}))
 
 app.get("/", (request, response) => {
   console.log("GET /");
