@@ -3,22 +3,12 @@ const fs = require("fs");
 // const http = require("http");
 const https = require("https");
 
-
-
 const key = fs.readFileSync("./key.pem");
 const cert = fs.readFileSync("./cert.pem");
-
-const corsOptions = {
-  origin: function (origin, callback) {
-    console.log(origin);
-    callback(null, { origin: true });
-  }
-}
-
 const app = express();
 
 const cors = require('cors')
-app.use(cors(corsOptions))
+app.use(cors())
 
 app.get("/", (request, response) => {
   console.log("GET /");
