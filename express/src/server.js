@@ -1,10 +1,10 @@
 const express = require("express");
-const fs = require("fs");
+const { existsSync, readFileSync } = require("fs");
 // const http = require("http");
 const https = require("https");
 
-const key = fs.readFileSync("./key.pem");
-const cert = fs.readFileSync("./cert.pem");
+const key = existsSync("./key.pem") ? readFileSync("./key.pem") : undefined;
+const cert = existsSync("./cert.pem") ? readFileSync("./cert.pem") : undefined;
 const app = express();
 
 const cors = require('cors')
