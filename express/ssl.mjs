@@ -1,7 +1,7 @@
 import { createCA, createCert } from "mkcert";
-import { existsSync, writeFileSync } from "fs";
+import { existsSync, writeFileSync, mkdirSync } from "fs";
 
-if (!existsSync("./key.pem")) {
+if (!existsSync("./.certs/key.pem")) {
 
     console.log("Creating SSL certificates...")
 
@@ -20,8 +20,12 @@ if (!existsSync("./key.pem")) {
     });
 
     console.log("Writing SSL certificates...")
-    writeFileSync("./key.pem", cert.key);
-    writeFileSync("./cert.pem", cert.cert);
+    if (!existsSync("./.certs")) {
+        console.log("Creating certs directory...")
+        mkdirSync("./.certs");
+    }
+    writeFileSync("./.certs/key.pem", cert.key);
+    writeFileSync("./.certs/cert.pem", cert.cert);
 }
 else {
     console.log("SSL certificates already exist.")

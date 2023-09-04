@@ -11,11 +11,11 @@ app.use(express.static('public'))
 
 let server = null;
 
-const hasCertificate = existsSync("./key.pem");
+const hasCertificate = existsSync("./.certs/key.pem");
 if (hasCertificate) {
   const https = require("https");
-  const key = readFileSync("./key.pem");
-  const cert = readFileSync("./cert.pem");
+  const key = readFileSync("./.certs/key.pem");
+  const cert = readFileSync("./.certs/cert.pem");
   server = https.createServer({ key, cert }, app)
 }
 else {

@@ -1,12 +1,12 @@
 {
-  "name": "needle-tiny-server",
-  "version": "0.0.1",
+  "name": "needle-engine-networking-server",
+  "version": "1.0.0",
   "description": "",
-  "main": "src/server.js",
+  "main": "index.js",
   "scripts": {
-    "start": "node src/server.js",
+    "start": "node index.js",
     "dev": "npm run ssl && npm start",
-    "debug": "node --inspect src/server.js",
+    "debug": "node --inspect index.js",
     "ssl": "node ssl.mjs"
   },
   "dependencies": {
