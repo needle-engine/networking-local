@@ -19,7 +19,7 @@ if (hasCertificate) {
   server = https.createServer({ key, cert }, app)
 }
 else {
-  server = http.createServer(this.express)
+  server = http.createServer(app)
 }
 
 
