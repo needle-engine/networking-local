@@ -20,11 +20,11 @@ const server = https.createServer({ key, cert }, app)
 const websocketEndpoint = "/socket";
 
 const networking = require("@needle-tools/needle-tiny-networking-ws");
-networking.startServerExpress(app, server, { endpoint: websocketEndpoint });
+networking.startServerExpress(app, { server: server, endpoint: websocketEndpoint });
 
 let port = process.env.PORT;
 if (!port) port = 9001;
 const listener = server.listen(port, function () {
   console.log("Listening on port " + listener.address().port);
-  console.log("Websocket endpoint is https://localhost:" + listener.address().port + websocketEndpoint);
+  console.log("Websocket endpoint is wss://localhost:" + listener.address().port + websocketEndpoint);
 });
