@@ -37,3 +37,7 @@
   ![](./documentation/gcloud_05.webp)
 - Click `CREATE`
 - You can now go to the [google cloud builds page](https://console.cloud.google.com/cloud-build/builds) to see your server being deployed and it should shortly after be available on [your cloud run URL](https://console.cloud.google.com/run)
+
+
+Afterwards you can then enter your new server URL in the Needle Engine Networking component:  
+![](./documentation/networking_hosted.webp)
