@@ -1,26 +1,29 @@
 const express = require("express");
 const { existsSync, readFileSync } = require("fs");
-// const http = require("http");
-const https = require("https");
+const http = require("http");
 
-const key = existsSync("./key.pem") ? readFileSync("./key.pem") : undefined;
-const cert = existsSync("./cert.pem") ? readFileSync("./cert.pem") : undefined;
 const app = express();
-
 const cors = require('cors')
 app.use(cors({
   origin: '*'
 }))
+app.use(express.static('public'))
 
-app.get("/", (request, response) => {
-  console.log("GET /");
-  response.send("OK");
-});
-const server = https.createServer({ key, cert }, app)
-// const server = http.createServer(this.express)
+let server = null;
+
+const hasCertificate = existsSync("./key.pem");
+if (hasCertificate) {
+  const https = require("https");
+  const key = readFileSync("./key.pem");
+  const cert = readFileSync("./cert.pem");
+  server = https.createServer({ key, cert }, app)
+}
+else {
+  server = http.createServer(this.express)
+}
+
 
 const websocketEndpoint = "/socket";
-
 const networking = require("@needle-tools/needle-tiny-networking-ws");
 networking.startServerExpress(app, { server: server, endpoint: websocketEndpoint });
 
@@ -28,5 +31,5 @@ let port = process.env.PORT;
 if (!port) port = 9001;
 const listener = server.listen(port, function () {
   console.log("Listening on port " + listener.address().port);
-  console.log("Websocket endpoint is wss://localhost:" + listener.address().port + websocketEndpoint);
+  console.log("Websocket runs on wss://localhost:" + listener.address().port + " using endpoint: " + websocketEndpoint);
 });
