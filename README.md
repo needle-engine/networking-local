@@ -1,5 +1,6 @@
-# Needle Engine 
-## Local Networking Test Server
+# Needle Engine Networking Server
+
+## Running locally
 
 ### Starting the server
 - Option A: Run `START_EXPRESS.bat`  
