@@ -1,1 +1,1 @@
-cd express && npm i && start cmd /c "timeout 5 & start chrome https://localhost:9001" && npm run dev
+cd express && npm set registry https://registry.npmjs.org && npm i && start cmd /c "timeout 5 & start chrome https://localhost:9001" && npm run dev
