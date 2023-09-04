@@ -17,11 +17,14 @@ app.get("/", (request, response) => {
 const server = https.createServer({ key, cert }, app)
 // const server = http.createServer(this.express)
 
+const websocketEndpoint = "/socket";
+
 const networking = require("@needle-tools/needle-tiny-networking-ws");
-networking.startServerExpress(app, server, { endpoint: "/socket" });
+networking.startServerExpress(app, server, { endpoint: websocketEndpoint });
 
 let port = process.env.PORT;
 if (!port) port = 9001;
 const listener = server.listen(port, function () {
   console.log("Listening on port " + listener.address().port);
+  console.log("Websocket endpoint is https://localhost:" + listener.address().port + websocketEndpoint);
 });
