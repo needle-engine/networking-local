@@ -108,10 +108,40 @@
     <div id="page">
         <div class="badge">
             <div class="icon">💚</div>
-            <div class="description">Networking Server is running</div>
+            <div class="description">Networking Server is running<br />at <a href="#copied"
+                    onclick="copyLocalhostURL()">wss://localhost:8080</a></div>
         </div>
         <div class="footer"><a href="https://needle.tools">Made with Needle</a></div>
     </div>
+    <input type="text" id="hidden_input" style="display:none">
 </body>
+
+
+<script>
+
+    document.addEventListener("DOMContentLoaded", function (event) {
+        const description = document.querySelector(".description");
+        if (description) {
+            description.innerHTML = description.innerHTML.replace("wss://localhost:8080", getServerUrl());
+        }
+    });
+
+    function getServerUrl() {
+        const isLocalhost = window.location.hostname === "localhost";
+        if (isLocalhost) return "wss://localhost:9001";
+        // e.g. when hosted on gcloud:
+        else return "wss://localhost:8080";
+    }
+
+    function copyLocalhostURL() {
+        const input = document.getElementById("hidden_input");
+        input.value = getServerUrl();
+        input.select();
+        input.setSelectionRange(0, 99999);
+        navigator.clipboard.writeText(input.value);
+        alert("Copied " + input.value + " to clipboard");
+    }
+
+</script>
 
 </html>
