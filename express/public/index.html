@@ -5,21 +5,81 @@
     <title>Local Needle Engine Networking Server</title>
 
     <style>
-        @import"https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@200...900&display=swap";
+        @import"https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@200;600&display=swap";
+
         body {
             padding: 0;
             margin: 0;
             font-family: Libre Franklin, sans-serif;
-            background: rgba(224, 243, 202, 1)
+            background: rgb(236, 252, 219)
         }
 
         #page {
+            position: fixed;
             width: 100%;
             height: 100%;
             color: #000;
-            font-size: 2em;
             text-align: center;
-            padding-top: 28%;
+            display: flex;
+        }
+
+        a {
+            color: #000;
+            text-decoration: none;
+            font-weight: 600;;
+        }
+        a:hover {
+            color: #444;
+            text-decoration: none;
+        }
+
+        .badge {
+            position: fixed;
+            background: white;
+            padding: 2em;
+            border-radius: 1em;
+            border: 1px dashed rgba(125, 125, 125, 0.5);
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .icon {
+            position: absolute;
+            font-size: 2em;
+            left: 50%;
+            transform: translate(-50%, 0%);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: translate(-50%, 0%) scale(1);
+            }
+
+            50% {
+                transform: translate(-50%, 0%) scale(1.2);
+            }
+
+            100% {
+                transform: translate(-50%, 0%) scale(1);
+            }
+        }
+
+        .description {
+            margin-top: 70px;
+            font-size: 14px;
+            color: rgba(125, 125, 125, 1);
+        }
+
+        .footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 0.8em;
+            color: rgba(125, 125, 125, 1);
+            margin-bottom: 2em;
         }
     </style>
 </head>
@@ -27,9 +87,11 @@
 
 <body>
     <div id="page">
-
-        Networking Server is running 💚
-
+        <div class="badge">
+            <div class="icon">💚</div>
+            <div class="description">Networking Server is running</div>
+        </div>
+        <div class="footer"><a href="https://needle.tools">Made with Needle</a></div>
     </div>
 </body>
 
