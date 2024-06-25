@@ -24,12 +24,12 @@ else {
 
 
 const websocketEndpoint = "/socket";
-const networking = require("@needle-tools/needle-tiny-networking-ws");
+const networking = require("@needle-tools/networking");
 networking.startServerExpress(app, { server: server, endpoint: websocketEndpoint });
 
 let port = process.env.PORT;
 if (!port) port = 9001;
 const listener = server.listen(port, function () {
-  console.log("Listening on port " + listener.address().port);
-  console.log("Websocket runs on wss://localhost:" + listener.address().port + " using endpoint: " + websocketEndpoint);
+  console.log("Listening on port " + listener.address()?.port);
+  console.log("Websocket runs on wss://localhost:" + listener.address()?.port + " using endpoint: " + websocketEndpoint);
 });
