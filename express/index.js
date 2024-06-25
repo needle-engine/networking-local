@@ -1,9 +1,10 @@
-const express = require("express");
-const { existsSync, readFileSync } = require("fs");
-const http = require("http");
+import express from "express";
+import { existsSync, readFileSync } from "fs";
+import http from "http";
+import cors from 'cors';
+import https from "https";
 
 const app = express();
-const cors = require('cors')
 app.use(cors({
   origin: '*'
 }))
@@ -13,7 +14,6 @@ let server = null;
 
 const hasCertificate = existsSync("./.certs/key.pem");
 if (hasCertificate) {
-  const https = require("https");
   const key = readFileSync("./.certs/key.pem");
   const cert = readFileSync("./.certs/cert.pem");
   server = https.createServer({ key, cert }, app)
@@ -24,7 +24,7 @@ else {
 
 
 const websocketEndpoint = "/socket";
-const networking = require("@needle-tools/networking");
+import * as networking from "@needle-tools/networking";
 networking.startServerExpress(app, { server: server, endpoint: websocketEndpoint });
 
 let port = process.env.PORT;
