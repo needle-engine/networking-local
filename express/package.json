@@ -7,7 +7,9 @@
     "start": "node index.js",
     "dev": "npm run ssl && npm start",
     "debug": "node --inspect index.js",
-    "ssl": "node ssl.mjs"
+    "ssl": "node ssl.mjs",
+    "docker:build": "docker build -t needle-networking-server .",
+    "docker:run": "docker run -p 3000:3000 needle-networking-server"
   },
   "dependencies": {
     "@needle-tools/networking": "file:../../packages/networking",
