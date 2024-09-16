@@ -132,7 +132,7 @@
         // e.g. when hosted on gcloud:
         const host = window.location.hostname;
         const port = window.location.port;
-        return "wss://" + host + ":" + (port ?? "8080");
+        return "wss://" + host + (port?.length ? (":" + port) : "");
     }
 
     function copyLocalhostURL() {
