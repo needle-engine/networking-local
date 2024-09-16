@@ -131,7 +131,8 @@
         if (isLocalhost) return "wss://localhost:9001";
         // e.g. when hosted on gcloud:
         const host = window.location.hostname;
-        return "wss://" + host + ":8080";
+        const port = window.location.port;
+        return "wss://" + host + ":" + (port ?? "8080");
     }
 
     function copyLocalhostURL() {
