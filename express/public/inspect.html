@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Needle Engine Networking Server</title>
+    <link rel="icon" href="./favicon.ico">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script type="module">
+        // setup
+        const ourPage = window.location.pathname;
+        const socketUrl = `wss://${window.location.host}/socket`;
+        const socket = new WebSocket(socketUrl);
+
+        // get ?room query parameter from the URL and set the room name input
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomNameEl = document.querySelector('input#room-name');
+        const roomPrefixEl = document.querySelector('input#room-prefix');
+        const messageKeyEl = document.querySelector('input#message-key');
+        const messageDataEl = document.querySelector('input#message-data');
+        const shouldPingEl = document.querySelector('input#should-ping');
+        const hidePingEl = document.querySelector('input#hide-pings');
+        const hideBinaryEl = document.querySelector('input#hide-binary');
+
+        function setup(el, param) {
+            const currentParam = urlParams.get(param);
+            if (currentParam) {
+                if (el.type === 'checkbox') {
+                    el.checked = currentParam === 'true';
+                } else {
+                    el.value = currentParam;
+                }
+            }
+            el.addEventListener('change', () => {
+                const url = new URL(window.location);
+                let val = el.value;
+                if (el.type === 'checkbox') {
+                    val = el.checked;
+                }
+                url.searchParams.set(param, val);
+                window.history.pushState({}, '', url);
+            });
+        }
+
+        setup(roomPrefixEl, 'roomPrefix');
+        setup(roomNameEl, 'room');
+        setup(messageKeyEl, 'key');
+        setup(messageDataEl, 'data');
+        setup(shouldPingEl, 'ping');
+        setup(hideBinaryEl, 'hideBin');
+
+        function send(key, data) {
+            const d = { key, data };
+            socket.send(JSON.stringify(d));
+            log('sent', key, d);
+        }
+
+        hideBinaryEl.addEventListener('change', () => {
+            document.querySelector('ul#messages').classList.toggle('hide-binary', hideBinaryEl.checked);
+        });
+
+        // get the join-room button and add a click event listener
+        const joinRoomButton = document.getElementById('join-room');
+        joinRoomButton.addEventListener('click', () => {
+            // Send "join-room" message to the server
+            send('join-room', {
+                room: roomPrefixEl.value + roomNameEl.value,
+            });
+        });
+
+        const leaveRoomButton = document.getElementById('leave-room');
+        leaveRoomButton.addEventListener('click', () => {
+            // Send "leave-room" message to the server
+            send('leave-room', {});
+        });
+
+        const sendMessageButton = document.getElementById('send-message');
+        sendMessageButton.addEventListener('click', () => {
+            // Send "message" message to the server
+            let msg = "";
+            try {
+                msg = JSON.parse(messageDataEl.value);
+            } catch (_) {
+                msg = messageDataEl.value;
+            }
+            send(
+                messageKeyEl.value,
+                msg,
+            );
+        });
+
+        // track users in room
+        const usersEl = document.querySelector('ul#users');
+        const userList = new Set();
+
+        function updateUsers(users) {
+            usersEl.innerHTML = '';
+            for (const user of users) {
+                const li = document.createElement('li');
+                li.textContent = user;
+                usersEl.appendChild(li);
+            }
+        }
+
+        // log function to log messages to the page
+        const logEl = document.querySelector('ul#messages');
+        function log(type, ...args) {
+            if (args.length > 0 && (
+                (args[0] === 'ping' && hidePingEl.checked) || 
+                (args[0].key === 'pong' && hidePingEl.checked))
+            ) {
+                return;
+            }
+
+            const li = document.createElement('li');
+
+            const typeSpan = document.createElement('span');
+            typeSpan.classList.add('type', type);
+            typeSpan.textContent = type;
+            li.appendChild(typeSpan);
+
+            const timestampSpan = document.createElement('span');
+            timestampSpan.classList.add('timestamp');
+            timestampSpan.textContent = new Date().toISOString().slice(11, -1);
+            li.appendChild(timestampSpan);
+
+            const toggleBtn = document.createElement('button');
+            toggleBtn.classList.add('expand');
+            toggleBtn.addEventListener('click', () => {
+                li.classList.toggle('expanded');
+            });
+            li.appendChild(toggleBtn);
+            
+            const contentSpan = document.createElement('span');
+            contentSpan.classList.add('content');
+            for (const arg of args) {
+                if (typeof arg === 'object') {
+                    if (arg.binaryString) {
+                        const binarySpan = document.createElement('span');
+                        binarySpan.classList.add('binary');
+                        binarySpan.textContent = arg.binaryString;
+                        contentSpan.appendChild(binarySpan);
+                        li.classList.add('binary');
+                        continue;
+                    }
+                    contentSpan.textContent += JSON.stringify(arg, null, 2) + ' ';
+                } else {
+                    contentSpan.textContent += arg + ' ';
+                }
+            }
+            li.appendChild(contentSpan);
+
+            logEl.insertBefore(li, logEl.firstChild);
+        }
+
+        socket.onopen = () => {
+            log('info', "Connected to the server");
+        };
+        socket.onmessage = (event) => {
+            if (typeof event.data === 'string') {
+                const data = JSON.parse(event.data);
+                log('received', data);
+
+                // Track users in the room
+                if (data.key === 'joined-room') {
+                    const users = data.inRoom;
+                    if (users) {
+                        userList.add(...users);
+                        updateUsers(userList);
+                    }
+                }
+                if (data.key === 'connection-start-info') {
+                    const user = data.data?.id;
+                    if (user) {
+                        userList.add(user);
+                        updateUsers(userList);
+                    }
+                }
+                if (data.key === 'user-joined-room') {
+                    const user = data.data?.userId;
+                    if (user) {
+                        userList.add(user);
+                        updateUsers(userList);
+                    }
+                }
+                if (data.key === 'user-left-room') {
+                    const user = data.data?.userId;
+                    if (user) {
+                        userList.delete(user);
+                        updateUsers(userList);
+                    }
+                }
+            }
+            // check if this is a blob
+            else if (event.data instanceof Blob) {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const data = reader.result;
+                    // parse flatbuffer type header
+                    const view = new DataView(data);
+                    const type = getBufferIdentifier(data);
+                    const remainder = new Uint8Array(data);
+                    // format body as FF A0 E3 50 ...
+                    const body = Array.from(remainder).map(b => b.toString(16).padStart(2, '0')).join(' ');
+                    log('received', { flatbufferType: type, length: data.byteLength }, { binaryString: body });
+
+                    /**
+                     * Return the file identifier.   Behavior is undefined for FlatBuffers whose
+                     * schema does not include a file_identifier (likely points at padding or the
+                     * start of a the root vtable).
+                     */
+                };
+                reader.readAsArrayBuffer(event.data);
+            }
+        };
+
+        function getBufferIdentifier(data) {
+            const view = new DataView(data);
+            const length = view.getUint32(0, true);
+            const identifier = new Uint8Array(data, 4, 4);
+            return String.fromCharCode.apply(null, identifier);
+        }
+
+        socket.onclose = () => {
+            log('info', 'Disconnected from the server');
+        };
+
+        setInterval(() => {
+            if (shouldPingEl.checked && socket.readyState === WebSocket.OPEN) {
+                send('ping', {});
+            }
+        }, 5000);
+    </script>
+    <style>
+        body {
+            font-family: monospace;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        li {
+            margin-bottom: 0.5em;
+            display: table-row;
+        }
+
+        li.expanded {
+            white-space: pre-wrap;
+        }
+
+        input, button {
+            font-family: monospace;
+            margin-right: 1em;
+        }
+
+        button.expand {
+            background: none;
+            border: none;
+            outline: none;
+            font-size: 0.2em;
+            cursor: pointer;
+            padding: 0.5em;
+        }
+
+        button.expand::before {
+            content: '▼';
+        }
+
+        li.expanded > button.expand::before {
+            content: '▲';
+        }
+
+        li > span {
+            display: table-cell;
+            padding: 0.5em;
+        }
+
+        ul.hide-binary li.binary {
+            display: none;
+        }
+
+        span.type, span.timestamp {
+            font-size: 0.8em;
+            text-transform: uppercase;
+            margin-right: 0.5em;
+        }
+
+        span.type {
+            font-weight: bold;
+        }
+
+        span.timestamp {
+            opacity: 0.4;
+        }
+
+        .binary span.type::after {
+            content: ' binary';
+        }
+
+        span.type.info {
+            color: orange;
+        }
+
+        span.type.sent {
+            color: #bf60ce;
+        }
+
+        span.type.received {
+            color: #60a0e3;
+        }
+
+        span.binary {
+            display: block;
+            font-size: 0.6em;
+            color: grey;
+            text-transform: uppercase;
+        }
+
+        fieldset {
+            border: 1px solid #ccc;
+            margin-bottom: 1em;
+            padding: 1em;
+        }
+
+        fieldset legend {
+            font-size: 0.7em;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <h2>Needle Networking Server Inspector</h2>
+    <fieldset>
+        <legend>Connection</legend>
+        <label>Room Prefix
+            <input id="room-prefix" type="text" placeholder="Room Prefix">
+        </label>
+        <label>Room Name
+            <input id="room-name" type="text" placeholder="Room Name">
+        </label>
+        <button id="join-room">Join Room</button>
+        <button id="leave-room">Leave Room</button>
+    </fieldset>
+    <fieldset>
+        <legend>Logging options</legend>
+        <label>Ping Server
+            <input id="should-ping" type="checkbox" checked>
+        </label>
+        <label>Hide Pings in Log
+            <input id="hide-pings" type="checkbox" checked>
+        </label>
+        <label>Hide Binary Messages
+            <input id="hide-binary" type="checkbox">
+        </label>
+    </fieldset>
+    <fieldset>
+        <legend>Send Custom Message</legend>
+        <label>Message Key
+            <input id="message-key" type="text" placeholder="Message Key">
+        </label>
+        <label>Message Data
+            <input id="message-data" type="text" placeholder="Message Data">
+        </label>
+        <button id="send-message">Send Message</button>
+    </fieldset>
+
+    <h2>Users</h2>
+    <ul id="users"></ul>
+
+    <h2>Messages</h2>
+    <ul id="messages"></ul>
+</body>
+</html>
