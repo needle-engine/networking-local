@@ -106,6 +106,7 @@
         }
 
         function joinRoom() {
+            leaveRoom();
             socket = new WebSocket(socketEndpointEl.value || socketUrl);
             socketSetup(socket);
         }
@@ -113,7 +114,6 @@
         createdRoomsEl.addEventListener('change', () => {
             const room = createdRoomsEl.value;
             if (room) {
-                leaveRoom();
                 roomPrefixEl.value = room;
                 roomNameEl.value = "";
                 joinRoom();
