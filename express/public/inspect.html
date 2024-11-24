@@ -9,7 +9,6 @@
         // setup
         const ourPage = window.location.pathname;
         const socketUrl = `wss://${window.location.host}/socket`;
-        const socket = new WebSocket(socketUrl);
 
         // get ?room query parameter from the URL and set the room name input
         const urlParams = new URLSearchParams(window.location.search);
@@ -17,9 +16,13 @@
         const roomPrefixEl = document.querySelector('input#room-prefix');
         const messageKeyEl = document.querySelector('input#message-key');
         const messageDataEl = document.querySelector('input#message-data');
+        const socketEndpointEl = document.querySelector('input#endpoint');
         const shouldPingEl = document.querySelector('input#should-ping');
         const hidePingEl = document.querySelector('input#hide-pings');
         const hideBinaryEl = document.querySelector('input#hide-binary');
+        const connectButton = document.getElementById('connect');
+        const disconnectButton = document.getElementById('disconnect');
+        const createdRoomsEl = document.getElementById('created-rooms');
 
         function setup(el, param) {
             const currentParam = urlParams.get(param);
@@ -47,6 +50,9 @@
         setup(messageDataEl, 'data');
         setup(shouldPingEl, 'ping');
         setup(hideBinaryEl, 'hideBin');
+        setup(socketEndpointEl, 'url');
+
+        let socket = new WebSocket(socketEndpointEl.value || socketUrl);
 
         function send(key, data) {
             const d = { key, data };
@@ -54,28 +60,83 @@
             log('sent', key, d);
         }
 
+        hidePingEl.addEventListener('change', () => {
+            document.querySelector('ul#messages').classList.toggle('hide-ping', hidePingEl.checked);
+        });
+
         hideBinaryEl.addEventListener('change', () => {
             document.querySelector('ul#messages').classList.toggle('hide-binary', hideBinaryEl.checked);
         });
 
-        // get the join-room button and add a click event listener
+        // This is only available when the server has a /rooms endpoint.
+        // Typically, that will only be available in a local server for testing.
+        function fetchExistingRooms() {
+            const socket = socketEndpointEl.value || socketUrl;
+            const socketParent = new URL(socket);
+            fetch(`https://${socketParent.hostname}:${socketParent.port}/rooms`)
+                .then(res => res.json())
+                .then(data => {
+                    createdRoomsEl.innerHTML = '';
+                    const placeholder = document.createElement('option');
+                    placeholder.disabled = true;
+                    placeholder.textContent = 'Select Room';
+                    createdRoomsEl.appendChild(placeholder);
+                    for (const room of data) {
+                        const option = document.createElement('option');
+                        option.value = room;
+                        option.textContent = room;
+                        createdRoomsEl.appendChild(option);
+                    }
+                })
+                .catch(err => {
+                    createdRoomsEl.style.display = 'none';
+                });
+        }
+
+        createdRoomsEl.addEventListener('click', () => {
+            fetchExistingRooms();
+        });
+
+        fetchExistingRooms();
+
+        function leaveRoom() {
+            socket.close();
+            userList.clear();
+            updateUsers(userList);
+        }
+
+        function joinRoom() {
+            socket = new WebSocket(socketEndpointEl.value || socketUrl);
+            socketSetup(socket);
+        }
+
+        createdRoomsEl.addEventListener('change', () => {
+            const room = createdRoomsEl.value;
+            if (room) {
+                leaveRoom();
+                roomPrefixEl.value = room;
+                roomNameEl.value = "";
+                joinRoom();
+            }
+        });
+
         const joinRoomButton = document.getElementById('join-room');
         joinRoomButton.addEventListener('click', () => {
-            // Send "join-room" message to the server
             send('join-room', {
                 room: roomPrefixEl.value + roomNameEl.value,
             });
         });
 
+        connectButton.addEventListener('click', () => { joinRoom(); });
+        disconnectButton.addEventListener('click', () => { leaveRoom(); });
+
         const leaveRoomButton = document.getElementById('leave-room');
         leaveRoomButton.addEventListener('click', () => {
-            // Send "leave-room" message to the server
             send('leave-room', {});
         });
 
         const sendMessageButton = document.getElementById('send-message');
         sendMessageButton.addEventListener('click', () => {
-            // Send "message" message to the server
             let msg = "";
             try {
                 msg = JSON.parse(messageDataEl.value);
@@ -103,14 +164,9 @@
 
         // log function to log messages to the page
         const logEl = document.querySelector('ul#messages');
+        logEl.classList.add('hide-ping');
+        logEl.classList.toggle('hide-binary', hideBinaryEl.checked);
         function log(type, ...args) {
-            if (args.length > 0 && (
-                (args[0] === 'ping' && hidePingEl.checked) || 
-                (args[0].key === 'pong' && hidePingEl.checked))
-            ) {
-                return;
-            }
-
             const li = document.createElement('li');
 
             const typeSpan = document.createElement('span');
@@ -142,6 +198,9 @@
                         li.classList.add('binary');
                         continue;
                     }
+                    if (arg.key === "ping" || arg.key === "pong") {
+                        li.classList.add('ping');
+                    }
                     contentSpan.textContent += JSON.stringify(arg, null, 2) + ' ';
                 } else {
                     contentSpan.textContent += arg + ' ';
@@ -152,66 +211,76 @@
             logEl.insertBefore(li, logEl.firstChild);
         }
 
-        socket.onopen = () => {
-            log('info', "Connected to the server");
-        };
-        socket.onmessage = (event) => {
-            if (typeof event.data === 'string') {
-                const data = JSON.parse(event.data);
-                log('received', data);
+        socketSetup(socket);
 
-                // Track users in the room
-                if (data.key === 'joined-room') {
-                    const users = data.inRoom;
-                    if (users) {
-                        userList.add(...users);
-                        updateUsers(userList);
-                    }
-                }
-                if (data.key === 'connection-start-info') {
-                    const user = data.data?.id;
-                    if (user) {
-                        userList.add(user);
-                        updateUsers(userList);
-                    }
-                }
-                if (data.key === 'user-joined-room') {
-                    const user = data.data?.userId;
-                    if (user) {
-                        userList.add(user);
-                        updateUsers(userList);
-                    }
-                }
-                if (data.key === 'user-left-room') {
-                    const user = data.data?.userId;
-                    if (user) {
-                        userList.delete(user);
-                        updateUsers(userList);
-                    }
-                }
-            }
-            // check if this is a blob
-            else if (event.data instanceof Blob) {
-                const reader = new FileReader();
-                reader.onload = () => {
-                    const data = reader.result;
-                    // parse flatbuffer type header
-                    const view = new DataView(data);
-                    const type = getBufferIdentifier(data);
-                    const remainder = new Uint8Array(data);
-                    // format body as FF A0 E3 50 ...
-                    const body = Array.from(remainder).map(b => b.toString(16).padStart(2, '0')).join(' ');
-                    log('received', { flatbufferType: type, length: data.byteLength }, { binaryString: body });
+        function socketSetup(socket) {
 
-                    /**
-                     * Return the file identifier.   Behavior is undefined for FlatBuffers whose
-                     * schema does not include a file_identifier (likely points at padding or the
-                     * start of a the root vtable).
-                     */
-                };
-                reader.readAsArrayBuffer(event.data);
-            }
-        };
+            socket.onopen = () => {
+                log('info', "Connected to " + socket.url);
+            };
+
+            socket.onmessage = (event) => {
+                if (typeof event.data === 'string') {
+                    const data = JSON.parse(event.data);
+                    log('received', data);
+
+                    // Track users in the room
+                    if (data.key === 'joined-room') {
+                        const users = data.inRoom;
+                        if (users) {
+                            userList.add(...users);
+                            updateUsers(userList);
+                        }
+                    }
+                    if (data.key === 'connection-start-info') {
+                        const user = data.data?.id;
+                        if (user) {
+                            userList.add(user);
+                            updateUsers(userList);
+                        }
+                    }
+                    if (data.key === 'user-joined-room') {
+                        const user = data.data?.userId;
+                        if (user) {
+                            userList.add(user);
+                            updateUsers(userList);
+                        }
+                    }
+                    if (data.key === 'user-left-room') {
+                        const user = data.data?.userId;
+                        if (user) {
+                            userList.delete(user);
+                            updateUsers(userList);
+                        }
+                    }
+                }
+                // check if this is a blob
+                else if (event.data instanceof Blob) {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const data = reader.result;
+                        // parse flatbuffer type header
+                        const view = new DataView(data);
+                        const type = getBufferIdentifier(data);
+                        const remainder = new Uint8Array(data);
+                        // format body as FF A0 E3 50 ...
+                        const body = Array.from(remainder).map(b => b.toString(16).padStart(2, '0')).join(' ');
+                        log('received', { flatbufferType: type, length: data.byteLength }, { binaryString: body });
+
+                        /**
+                         * Return the file identifier.   Behavior is undefined for FlatBuffers whose
+                         * schema does not include a file_identifier (likely points at padding or the
+                         * start of a the root vtable).
+                         */
+                    };
+                    reader.readAsArrayBuffer(event.data);
+                }
+            };
+
+            socket.onclose = () => {
+                log('info', 'Disconnected from ' + socket.url);
+            };
+        }
 
         function getBufferIdentifier(data) {
             const view = new DataView(data);
@@ -219,10 +288,6 @@
             const identifier = new Uint8Array(data, 4, 4);
             return String.fromCharCode.apply(null, identifier);
         }
-
-        socket.onclose = () => {
-            log('info', 'Disconnected from the server');
-        };
 
         setInterval(() => {
             if (shouldPingEl.checked && socket.readyState === WebSocket.OPEN) {
@@ -249,7 +314,7 @@
             white-space: pre-wrap;
         }
 
-        input, button {
+        input, button, select, option {
             font-family: monospace;
             margin-right: 1em;
         }
@@ -276,7 +341,7 @@
             padding: 0.5em;
         }
 
-        ul.hide-binary li.binary {
+        ul.hide-binary li.binary, ul.hide-ping li.ping {
             display: none;
         }
 
@@ -296,6 +361,10 @@
 
         .binary span.type::after {
             content: ' binary';
+        }
+
+        .ping span.type::after {
+            content: ' heartbeat';
         }
 
         span.type.info {
@@ -321,6 +390,7 @@
             border: 1px solid #ccc;
             margin-bottom: 1em;
             padding: 1em;
+            border-radius: 10px;
         }
 
         fieldset legend {
@@ -328,23 +398,63 @@
             letter-spacing: 1px;
             text-transform: uppercase;
         }
+
+        label:has(input[type="text"]) {
+            width: 250px;
+            display: inline-block;
+            margin-bottom: 0.5em;
+            text-transform: uppercase;
+            font-size: 0.7em;
+            margin-right: 1em;
+        }
+
+        input[type="text"] {
+            width: 250px;
+        }
+
+        input:invalid {
+            background-color: rgba(255, 0, 0, 0.093);
+        }
+        
+        label:has(input[type="text"]:invalid)::after {
+            content: attr(data-hint);
+            color: red;
+        }
     </style>
 </head>
 <body>
     <h2>Needle Networking Server Inspector</h2>
+    <p>
+        This tool allows connecting to a Needle Engine networking room.
+        The same messages are sent and received like a regular user.
+        This is useful for understanding and debugging custom network messages.
+        <a href="https://engine.needle.tools/docs/networking.html">Networking Docs</a> | <a href="https://needle.tools">Needle Engine</a>
+    </p>
+    
     <fieldset>
         <legend>Connection</legend>
+        <label data-hint="Must start with wss://">Socket Address
+            <input id="endpoint" type="text" placeholder="wss://localhost:9001/socket" pattern="\wss:\/\/.*">
+        </label>
+        <button id="connect">Connect</button>
+        <button id="disconnect">Disconnect</button>
+        <br/>
         <label>Room Prefix
             <input id="room-prefix" type="text" placeholder="Room Prefix">
         </label>
         <label>Room Name
             <input id="room-name" type="text" placeholder="Room Name">
         </label>
+        <label>Pick Room
+            <select title="Created Rooms" id="created-rooms">
+                <option disabled>Select Room</option>
+            </select>
+        </label>
         <button id="join-room">Join Room</button>
         <button id="leave-room">Leave Room</button>
     </fieldset>
     <fieldset>
-        <legend>Logging options</legend>
+        <legend>Options</legend>
         <label>Ping Server
             <input id="should-ping" type="checkbox" checked>
         </label>
@@ -360,7 +470,7 @@
         <label>Message Key
             <input id="message-key" type="text" placeholder="Message Key">
         </label>
-        <label>Message Data
+        <label>Message Data JSON
             <input id="message-data" type="text" placeholder="Message Data">
         </label>
         <button id="send-message">Send Message</button>
